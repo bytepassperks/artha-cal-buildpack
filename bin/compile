@@ -1,0 +1,40 @@
+#!/usr/bin/env bash
+set -euo pipefail
+BUILD_DIR=$1
+CACHE_DIR=$2
+ENV_DIR=$3
+
+read_env() {
+  local key=$1 def=${2:-}
+  if [ -f "$ENV_DIR/$key" ]; then cat "$ENV_DIR/$key"; else echo "$def"; fi
+}
+
+NODE_VERSION=$(read_env NODE_VERSION "v22.12.0")
+SLUG_PAYLOAD_URL=$(read_env SLUG_PAYLOAD_URL "")
+
+if [ -z "$SLUG_PAYLOAD_URL" ]; then
+  echo " !     SLUG_PAYLOAD_URL is not set" >&2
+  exit 1
+fi
+
+echo "-----> Installing Node ${NODE_VERSION}"
+mkdir -p "$BUILD_DIR/.node"
+NODE_CACHE="$CACHE_DIR/node-${NODE_VERSION}.tar.gz"
+if [ ! -f "$NODE_CACHE" ]; then
+  mkdir -p "$CACHE_DIR"
+  curl -fsSL "https://nodejs.org/dist/${NODE_VERSION}/node-${NODE_VERSION}-linux-x64.tar.gz" -o "$NODE_CACHE"
+fi
+tar xzf "$NODE_CACHE" -C "$BUILD_DIR/.node" --strip-components=1
+
+echo "-----> Downloading Artha slug payload"
+curl -fsSL "$SLUG_PAYLOAD_URL" -o /tmp/payload.tar.gz
+echo "-----> Extracting payload ($(du -h /tmp/payload.tar.gz | cut -f1))"
+tar xzf /tmp/payload.tar.gz -C "$BUILD_DIR" --strip-components=1
+rm -f /tmp/payload.tar.gz
+
+mkdir -p "$BUILD_DIR/.profile.d"
+cat > "$BUILD_DIR/.profile.d/000-artha-node.sh" <<'PROF'
+export PATH="/app/.node/bin:$PATH"
+PROF
+
+echo "-----> Artha Scheduling slug assembled ($(du -sh "$BUILD_DIR" | cut -f1))"

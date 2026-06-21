@@ -1,0 +1,3 @@
+#!/usr/bin/env bash
+echo "Artha Cal Slug"
+exit 0

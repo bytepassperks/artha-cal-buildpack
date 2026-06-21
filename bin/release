@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+cat <<YAML
+default_process_types:
+  web: .node/bin/node apps/web/server.js
+YAML
